@@ -1,0 +1,39 @@
+@page "/ventas/{Id:int}"
+@inject ISaleRepository Repository
+
+<PageTitle>Detalle de venta · Punto</PageTitle>
+<div class="page-heading compact-heading"><div><div class="eyebrow">VENTAS <span>/</span> DETALLE</div><h1>Detalle de venta</h1><p class="page-lead">Consulta el estado de la cabecera y sus conceptos guardados.</p></div><a class="button button-quiet" href="/">← Volver</a></div>
+@if (error is not null)
+{
+    <div class="notice notice-error"><strong>No se pudo cargar la venta</strong><span>@error</span></div>
+}
+else if (details is null)
+{
+    <div class="loading-card">Cargando venta…</div>
+}
+else
+{
+    <section class="panel detail-panel">
+        <div class="panel-header"><div><span class="sale-number">#V-@details.Sale.Id.ToString("D4")</span><h2>@details.Sale.CustomerName</h2><p>Registrada el @details.Sale.CreatedAt.ToString("dd MMMM yyyy · HH:mm", CultureInfo.GetCultureInfo("es-MX"))</p></div><span class="status-badge @(details.Concepts.Count == 0 ? "status-warning" : "status-ok")">@(details.Concepts.Count == 0 ? "Sin conceptos" : "Registrada")</span></div>
+        @if (details.Concepts.Count == 0)
+        {
+            <div class="partial-state"><span class="partial-icon">!</span><div><strong>Venta incompleta</strong><p>La cabecera se guardó, pero ningún concepto quedó asociado. Este es el resultado esperado al fallar el segundo paso sin transacción.</p></div></div>
+        }
+        <div class="table-scroll"><table><thead><tr><th>CONCEPTO</th><th>CANTIDAD</th><th class="align-right">PRECIO UNITARIO</th><th class="align-right">SUBTOTAL</th></tr></thead><tbody>
+        @foreach (var concept in details.Concepts)
+        { <tr><td>@concept.ProductName</td><td>@concept.Quantity</td><td class="align-right">@concept.UnitPrice.ToString("C", CultureInfo.GetCultureInfo("es-MX"))</td><td class="align-right amount">@concept.Subtotal.ToString("C", CultureInfo.GetCultureInfo("es-MX"))</td></tr> }
+        </tbody></table></div>
+        <div class="total-row"><span>Total de la venta</span><strong>@details.Sale.Total.ToString("C", CultureInfo.GetCultureInfo("es-MX"))</strong></div>
+    </section>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private SaleDetails? details;
+    private string? error;
+    protected override async Task OnParametersSetAsync()
+    {
+        try { details = await Repository.GetByIdAsync(Id); if (details is null) error = "La venta solicitada no existe."; }
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.Data.SqlClient.SqlException) { error = ex.Message; }
+    }
+}

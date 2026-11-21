@@ -1,0 +1,58 @@
+@page "/"
+@inject ISaleRepository Repository
+
+<PageTitle>Resumen de ventas · Punto</PageTitle>
+
+<div class="page-heading">
+    <div><div class="eyebrow">@DateTime.Now.ToString("dddd, d 'DE' MMMM", CultureInfo.GetCultureInfo("es-MX")).ToUpperInvariant()</div><h1>Resumen de ventas</h1><p class="page-lead">Una vista clara de la actividad reciente de tu negocio.</p></div>
+    <a class="button button-primary" href="/ventas/nueva"><span>＋</span> Registrar venta</a>
+</div>
+
+@if (loadError is not null)
+{
+    <div class="notice notice-error"><strong>No se pudo conectar a la base de datos.</strong><span>@loadError</span></div>
+}
+else if (sales is null)
+{
+    <div class="loading-card">Cargando ventas…</div>
+}
+else
+{
+    <section class="stats-grid" aria-label="Indicadores">
+        <article class="stat-card"><div class="stat-top"><span>VENTAS REGISTRADAS</span><span class="stat-icon violet">↗</span></div><div class="stat-value">@sales.Count</div><div class="stat-foot">Últimas 50 ventas</div></article>
+        <article class="stat-card"><div class="stat-top"><span>INGRESOS TOTALES</span><span class="stat-icon mint">$</span></div><div class="stat-value">@sales.Sum(s => s.Total).ToString("C", CultureInfo.GetCultureInfo("es-MX"))</div><div class="stat-foot">Suma de conceptos guardados</div></article>
+        <article class="stat-card"><div class="stat-top"><span>CONCEPTOS</span><span class="stat-icon peach">▤</span></div><div class="stat-value">@sales.Sum(s => s.ConceptCount)</div><div class="stat-foot">En las ventas recientes</div></article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><div><h2>Actividad reciente</h2><p>Seguimiento de las últimas ventas registradas.</p></div><span class="count-pill">@sales.Count registros</span></div>
+        @if (sales.Count == 0)
+        {
+            <div class="empty-state"><div class="empty-icon">▧</div><h3>Aún no hay ventas</h3><p>Cuando registres una venta, aparecerá aquí.</p><a href="/ventas/nueva" class="button button-secondary">Crear primera venta</a></div>
+        }
+        else
+        {
+            <div class="table-scroll"><table><thead><tr><th>VENTA</th><th>CLIENTE</th><th>FECHA</th><th>CONCEPTOS</th><th class="align-right">TOTAL</th><th></th></tr></thead><tbody>
+            @foreach (var sale in sales)
+            {
+                <tr><td><a class="sale-number" href="/ventas/@sale.Id">#V-@sale.Id.ToString("D4")</a></td><td><div class="customer-cell"><span class="customer-avatar">@Initials(sale.CustomerName)</span>@sale.CustomerName</div></td><td class="muted">@sale.CreatedAt.ToString("dd MMM yyyy · HH:mm", CultureInfo.GetCultureInfo("es-MX"))</td><td><span class="concept-pill">@sale.ConceptCount</span></td><td class="align-right amount">@sale.Total.ToString("C", CultureInfo.GetCultureInfo("es-MX"))</td><td class="align-right"><a class="row-action" href="/ventas/@sale.Id" aria-label="Ver venta #@sale.Id">↗</a></td></tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+    <div class="learning-note"><span class="note-icon">i</span><p><strong>Área de práctica</strong> Una venta puede quedar guardada aunque su concepto falle. Esta demo deja visible ese caso para estudiar integridad de datos.</p><a href="/ventas/nueva">Probar escenario <span>→</span></a></div>
+}
+
+@code {
+    private IReadOnlyList<Sale>? sales;
+    private string? loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { sales = await Repository.GetRecentAsync(); }
+        catch (Exception ex) when (ex is InvalidOperationException or Microsoft.Data.SqlClient.SqlException)
+        { loadError = ex.Message; }
+    }
+
+    private static string Initials(string name) => string.Join("", name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+}

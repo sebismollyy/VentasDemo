@@ -1,0 +1,71 @@
+@page "/ventas/nueva"
+@inject ISalesService SalesService
+
+<PageTitle>Nueva venta · Punto</PageTitle>
+<div class="page-heading compact-heading"><div><div class="eyebrow">VENTAS <span>/</span> NUEVA</div><h1>Registrar una venta</h1><p class="page-lead">Captura los datos y agrega un concepto para comenzar.</p></div><a class="button button-quiet" href="/">← Volver</a></div>
+
+<div class="form-layout">
+    <section class="panel form-panel">
+        <div class="panel-header"><div><h2>Datos de la venta</h2><p>La venta y su concepto se guardan en pasos independientes.</p></div><span class="step-label">01 <span>/</span> 01</span></div>
+        @if (successMessage is not null)
+        {
+            <div class="notice notice-success"><strong>Venta registrada</strong><span>@successMessage</span><a href="/ventas/@createdSaleId">Ver venta →</a></div>
+        }
+        @if (partialMessage is not null)
+        {
+            <div class="notice notice-warning"><strong>Se produjo una inserción parcial</strong><span>@partialMessage</span><p>La venta <a href="/ventas/@createdSaleId">#V-@createdSaleId.ToString("D4")</a> existe, pero no tiene conceptos.</p></div>
+        }
+        @if (validationMessage is not null) { <div class="notice notice-error"><span>@validationMessage</span></div> }
+        <EditForm Model="Input!" OnValidSubmit="SaveAsync" FormName="new-sale">
+            <div class="form-section-title"><span class="section-index">A</span><div><strong>Cliente</strong><small>¿A quién corresponde esta venta?</small></div></div>
+            <div class="field"><label for="customer">Nombre del cliente <span>· requerido</span></label><InputText id="customer" @bind-Value="Input!.CustomerName" placeholder="Ej. Mariana López" maxlength="120" required /></div>
+            <div class="form-divider"></div>
+            <div class="form-section-title"><span class="section-index">B</span><div><strong>Primer concepto</strong><small>Detalle que se agregará a la venta</small></div></div>
+            <div class="field"><label for="product">Nombre del producto</label><InputText id="product" @bind-Value="Input!.ProductName" placeholder="Ej. Taza de cerámica" maxlength="160" required /></div>
+            <div class="field-row"><div class="field"><label for="quantity">Cantidad <span>· debe ser mayor a 0</span></label><InputNumber id="quantity" @bind-Value="Input!.Quantity" /></div><div class="field"><label for="price">Precio unitario <span>· no negativo</span></label><div class="input-prefix"><span>$</span><InputNumber id="price" @bind-Value="Input!.UnitPrice" step="0.01" /></div></div></div>
+            <label class="scenario-option"><InputCheckbox @bind-Value="Input!.ForceConceptFailure" /><span><strong>Simular fallo del concepto</strong><small>La app guardará la cabecera y enviará cantidad 0. SQL Server rechazará el concepto y podrás observar la venta parcial.</small></span></label>
+            <div class="form-hint"><span>ⓘ</span> Este escenario no desactiva las restricciones: muestra cómo una restricción de SQL Server puede fallar después de que la primera escritura ya quedó guardada.</div>
+            <div class="form-actions"><a class="button button-quiet" href="/">Cancelar</a><button class="button button-primary" type="submit">Guardar venta <span>→</span></button></div>
+        </EditForm>
+    </section>
+    <aside class="side-card"><div class="side-illustration">↗<span>✓</span></div><div class="eyebrow">APRENDIZAJE EN CURSO</div><h3>¿Qué pasa si algo falla?</h3><p>El sistema inserta primero la cabecera. Después intenta guardar el concepto. Si SQL Server rechaza el concepto, la cabecera permanece.</p><div class="flow-step"><span class="flow-check">1</span><div><strong>Crear venta</strong><small>Se guarda primero</small></div></div><div class="flow-step"><span class="flow-pending">2</span><div><strong>Agregar concepto</strong><small>Puede fallar por integridad</small></div></div><a class="text-link" href="/guia">Leer la guía técnica <span>→</span></a></aside>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private SaleForm? Input { get; set; }
+    private int createdSaleId;
+    private string? successMessage;
+    private string? partialMessage;
+    private string? validationMessage;
+
+    protected override void OnInitialized() => Input ??= new SaleForm();
+
+    private async Task SaveAsync()
+    {
+        successMessage = partialMessage = validationMessage = null;
+        try
+        {
+            var input = Input ?? new SaleForm();
+            var result = await SalesService.CreateAsync(new NewSaleRequest(input.CustomerName),
+                new NewSaleConcept(input.ProductName, input.ForceConceptFailure ? 0 : input.Quantity, input.UnitPrice));
+            createdSaleId = result.SaleId;
+            if (result.IsComplete) successMessage = $"El concepto también se guardó correctamente en la venta #V-{createdSaleId:D4}.";
+            else partialMessage = result.ErrorMessage;
+            Input = new SaleForm();
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            validationMessage = $"SQL Server no pudo crear la venta: {ex.Message}";
+        }
+    }
+
+    private sealed class SaleForm
+    {
+        public string CustomerName { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; } = 0m;
+        public bool ForceConceptFailure { get; set; }
+    }
+}

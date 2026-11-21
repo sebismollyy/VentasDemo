@@ -1,0 +1,16 @@
+@page "/guia"
+
+<PageTitle>Guía técnica · Punto</PageTitle>
+<div class="page-heading compact-heading"><div><div class="eyebrow">DOCUMENTACIÓN</div><h1>Cómo funciona la demo</h1><p class="page-lead">El recorrido de datos desde el formulario hasta SQL Server.</p></div><a class="button button-quiet" href="/">← Volver</a></div>
+<section class="panel detail-panel guide-panel">
+    <div class="panel-header"><div><h2>Un guardado en dos pasos</h2><p>Static SSR · Repository · ADO.NET</p></div></div>
+    <div class="guide-content">
+        <div class="flow-step"><span class="flow-check">1</span><div><strong>Blazor procesa el formulario en el servidor</strong><small>El POST SSR usa antiforgery y enlaza los campos con el modelo de captura.</small></div></div>
+        <div class="flow-step"><span class="flow-check">2</span><div><strong>SalesService inserta la cabecera</strong><small>El repositorio parametriza el comando ADO.NET y devuelve el identificador.</small></div></div>
+        <div class="flow-step"><span class="flow-pending">3</span><div><strong>Se intenta insertar el concepto</strong><small>Una cantidad igual o menor a cero viola un CHECK en SQL Server.</small></div></div>
+        <div class="partial-state"><span class="partial-icon">!</span><div><strong>Resultado visible: venta parcial</strong><p>La cabecera queda confirmada y puede consultarse sin conceptos. Esta versión no usa transacciones.</p></div></div>
+        <h3>Documentación del repositorio</h3>
+        <p>La carpeta <code>docs/</code> contiene las guías de arquitectura, base de datos, ejecución y el escenario de integridad. El archivo <code>docs/README.md</code> es su índice.</p>
+        <a class="button button-primary" href="/ventas/nueva">Probar el formulario <span>→</span></a>
+    </div>
+</section>
